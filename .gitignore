@@ -1,0 +1,28 @@
+__pycache__/
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.run
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IntelliJ project files
+/trip-planner-llm.iml
+/.idea/

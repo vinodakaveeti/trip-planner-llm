@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Planner</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            width: 80vw;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            box-sizing: border-box;
+        }
+        .container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            display: none;
+        }
+        .result h2 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .health-status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .healthy {
+            background: #d5f4e6;
+            border: 1px solid #27ae60;
+            color: #27ae60;
+        }
+        .unhealthy {
+            background: #fadbd8;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        .error {
+            color: #e74c3c;
+            background: #fadbd8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            display: none;
+        }
+        .success {
+            color: #27ae60;
+            background: #d5f4e6;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            display: none;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            max-height: 60vh;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Beautiful Trip Plan Styles */
+        .trip-plan-beautiful {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .trip-overview, .trip-itinerary, .trip-budget, .trip-tips {
+            padding: 25px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .trip-overview:last-child, .trip-itinerary:last-child, .trip-budget:last-child, .trip-tips:last-child {
+            border-bottom: none;
+        }
+
+        .trip-overview h2, .trip-itinerary h2, .trip-budget h2, .trip-tips h2 {
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .overview-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .overview-item h3 {
+            color: #7f8c8d;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin: 0 0 8px 0;
+        }
+
+        .overview-item p {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .trip-itinerary {
+            background: #fdfdfd;
+        }
+
+        .day-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+
+        .day-header {
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .day-header h3 {
+            margin: 0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .day-header h3::before {
+            content: "📅";
+        }
+
+        .day-cost {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .day-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .time-block {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+        }
+
+        .time-block h4 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .time-block p {
+            color: #34495e;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .time-block.morning {
+            border-left-color: #f39c12;
+        }
+
+        .time-block.afternoon {
+            border-left-color: #e67e22;
+        }
+
+        .time-block.evening {
+            border-left-color: #9b59b6;
+        }
+
+        .trip-budget {
+            background: #fdfdfd;
+        }
+
+        .budget-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .budget-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .budget-item-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            width: 30px;
+            text-align: center;
+        }
+
+        .budget-item-info h4 {
+            margin: 0 0 5px 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+
+        .budget-item-info p {
+            margin: 0;
+            font-weight: bold;
+            color: #27ae60;
+            font-size: 18px;
+        }
+
+        .budget-total {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .budget-total h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .budget-total p {
+            margin: 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .trip-tips {
+            background: #fdfdfd;
+        }
+
+        .tips-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .tips-list li {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tips-list li:last-child {
+            border-bottom: none;
+        }
+
+        .tip-icon {
+            margin-right: 12px;
+            font-size: 18px;
+            color: #e67e22;
+            margin-top: 2px;
+        }
+
+        .tips-list li p {
+            margin: 0;
+            color: #34495e;
+            line-height: 1.6;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .overview-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .day-details {
+                grid-template-columns: 1fr;
+            }
+
+            .budget-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧳 Trip Planner</h1>
+
+        <div id="health-status" class="health-status">
+            <strong>Health Status:</strong> <span id="health-text">Checking...</span>
+        </div>
+
+        <div class="form-group">
+            <label for="trip-request">Describe your trip plan:</label>
+            <textarea id="trip-request" placeholder="e.g., Plan a 5-day trip to Paris for two people with a budget of $2000"></textarea>
+            <p class="help-text">(Minimum 10 characters, maximum 5000)</p>
+        </div>
+
+        <button id="submit-btn" type="button">Plan My Trip</button>
+
+        <div id="loading" class="loading">Generating your trip plan...</div>
+
+        <div id="error-message" class="error"></div>
+
+        <div id="success-message" class="success"></div>
+
+        <div id="result" class="result">
+            <h2>Your Trip Plan:</h2>
+            <div>
+                <strong>Context:</strong> <span id="result-context"></span>
+            </div>
+            <div>
+                <strong>Query:</strong> <span id="result-query"></span>
+            </div>
+            <div>
+                <strong>Response:</strong>
+            </div>
+            <pre id="result-message"></pre>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tripRequestTextarea = document.getElementById('trip-request');
+            const submitBtn = document.getElementById('submit-btn');
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            const resultDiv = document.getElementById('result');
+            const healthStatusDiv = document.getElementById('health-status');
+            const healthText = document.getElementById('health-text');
+
+            const resultContext = document.getElementById('result-context');
+            const resultQuery = document.getElementById('result-query');
+            const resultMessage = document.getElementById('result-message');
+
+            // Check health on load
+            checkHealth();
+
+            // Check health every 30 seconds
+            setInterval(checkHealth, 30000);
+
+            function checkHealth() {
+                fetch('/health')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'healthy') {
+                            healthText.textContent = '✅ Healthy';
+                            healthStatusDiv.className = 'health-status healthy';
+                        } else {
+                            healthText.textContent = '❌ Unhealthy';
+                            healthStatusDiv.className = 'health-status unhealthy';
+                        }
+                        healthStatusDiv.style.display = 'block';
+                    })
+                    .catch(error => {
+                        healthText.textContent = '❌ Error checking health';
+                        healthStatusDiv.className = 'health-status unhealthy';
+                        healthStatusDiv.style.display = 'block';
+                        console.error('Health check error:', error);
+                    });
+            }
+
+            submitBtn.addEventListener('click', function() {
+                const tripText = tripRequestTextarea.value.trim();
+
+                // Basic validation
+                if (tripText.length < 10) {
+                    showError('Please enter at least 10 characters for your trip request.');
+                    return;
+                }
+
+                if (tripText.length > 5000) {
+                    showError('Please limit your trip request to 5000 characters.');
+                    return;
+                }
+
+                // Clear previous results
+                clearResults();
+
+                // Show loading
+                loadingDiv.style.display = 'block';
+                submitBtn.disabled = true;
+
+                // Make API request
+                fetch('/v1/plan-trip', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: tripText })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw err; });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+
+                    // Display results
+                    resultContext.textContent = data.context;
+                    resultQuery.textContent = data.query;
+                    // Render beautiful trip plan UI
+                    renderTripPlan(data.message);
+
+                    resultDiv.style.display = 'block';
+                    showSuccess('Trip plan generated successfully!');
+                })
+                .catch(error => {
+                    console.error('API error:', error);
+                    let errorMessage = 'An unknown error occurred';
+                    if (error.detail) {
+                        errorMessage = error.detail;
+                    } else if (error.message) {
+                        errorMessage = error.message;
+                    }
+                    showError(errorMessage);
+                })
+                .finally(() => {
+                    loadingDiv.style.display = 'none';
+                    submitBtn.disabled = false;
+                });
+            });
+
+            function showError(message) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                successDiv.style.display = 'none';
+            }
+
+            function showSuccess(message) {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                errorDiv.style.display = 'none';
+            }
+
+            function clearResults() {
+                resultDiv.style.display = 'none';
+                errorDiv.style.display = 'none';
+                successDiv.style.display = 'none';
+                resultContext.textContent = '';
+                resultQuery.textContent = '';
+                resultMessage.innerHTML = ''; // Changed from textContent to innerHTML for HTML content
+            }
+
+            // Function to render a beautiful trip plan UI
+            function renderTripPlan(tripData) {
+                // Create a container for the beautiful trip plan
+                const tripPlanContainer = document.createElement('div');
+                tripPlanContainer.className = 'trip-plan-beautiful';
+
+                // Trip Overview Section
+                const overviewSection = document.createElement('div');
+                overviewSection.className = 'trip-overview';
+                overviewSection.innerHTML = `
+                    <h2>🌍 Trip Overview</h2>
+                    <div class="overview-grid">
+                        <div class="overview-item">
+                            <h3>Destination</h3>
+                            <p>${tripData.destination || 'N/A'}</p>
+                        </div>
+                        <div class="overview-item">
+                            <h3>Duration</h3>
+                            <p>${tripData.duration_days || 'N/A'} days</p>
+                        </div>
+                        <div class="overview-item">
+                            <h3>Budget</h3>
+                            <p>₹${formatNumber(tripData.budget_inr || 0)}</p>
+                        </div>
+                        <div class="overview-item">
+                            <h3>Travelers</h3>
+                            <p>${tripData.travellers || 'N/A'} people</p>
+                        </div>
+                    </div>
+                `;
+
+                // Itinerary Section
+                const itinerarySection = document.createElement('div');
+                itinerarySection.className = 'trip-itinerary';
+                itinerarySection.innerHTML = '<h2>📅 Day-by-Day Itinerary</h2>';
+
+                if (tripData.itinerary && Array.isArray(tripData.itinerary)) {
+                    tripData.itinerary.forEach(day => {
+                        const dayCard = document.createElement('div');
+                        dayCard.className = 'day-card';
+                        dayCard.innerHTML = `
+                            <div class="day-header">
+                                <h3>Day ${day.day}: ${day.title}</h3>
+                                <span class="day-cost">₹${formatNumber(day.estimated_cost_inr || 0)}</span>
+                            </div>
+                            <div class="day-details">
+                                <div class="time-block morning">
+                                    <h4>🌅 Morning</h4>
+                                    <p>${day.morning || 'No activities planned'}</p>
+                                </div>
+                                <div class="time-block afternoon">
+                                    <h4>☀️ Afternoon</h4>
+                                    <p>${day.afternoon || 'No activities planned'}</p>
+                                </div>
+                                <div class="time-block evening">
+                                    <h4>🌆 Evening</h4>
+                                    <p>${day.evening || 'No activities planned'}</p>
+                                </div>
+                            </div>
+                        `;
+                        itinerarySection.appendChild(dayCard);
+                    });
+                }
+
+                // Budget Breakdown Section
+                const budgetSection = document.createElement('div');
+                budgetSection.className = 'trip-budget';
+                budgetSection.innerHTML = '<h2>💰 Budget Breakdown</h2>';
+
+                if (tripData.budget_breakdown && typeof tripData.budget_breakdown === 'object') {
+                    const budgetGrid = document.createElement('div');
+                    budgetGrid.className = 'budget-grid';
+
+                    const budgetItems = [
+                        { label: 'Travel', value: tripData.budget_breakdown.travel, icon: '🚗' },
+                        { label: 'Accommodation', value: tripData.budget_breakdown.accommodation, icon: '🏨' },
+                        { label: 'Food', value: tripData.budget_breakdown.food, icon: '🍽️' },
+                        { label: 'Local Transport', value: tripData.budget_breakdown.local_transport, icon: '🚕' },
+                        { label: 'Activities', value: tripData.budget_breakdown.activities, icon: '🎯' },
+                        { label: 'Miscellaneous', value: tripData.budget_breakdown.miscellaneous, icon: '📋' }
+                    ];
+
+                    budgetItems.forEach(item => {
+                        if (item.value !== undefined && item.value !== null) {
+                            const budgetItem = document.createElement('div');
+                            budgetItem.className = 'budget-item';
+                            budgetItem.innerHTML = `
+                                <div class="budget-item-icon">${item.icon}</div>
+                                <div class="budget-item-info">
+                                    <h4>${item.label}</h4>
+                                    <p>₹${formatNumber(item.value)}</p>
+                                </div>
+                            `;
+                            budgetGrid.appendChild(budgetItem);
+                        }
+                    });
+
+                    // Total budget
+                    const totalBudget = document.createElement('div');
+                    totalBudget.className = 'budget-total';
+                    totalBudget.innerHTML = `
+                        <h3>Total Budget</h3>
+                        <p>₹${formatNumber(tripData.budget_breakdown.total || 0)}</p>
+                    `;
+                    budgetSection.appendChild(budgetGrid);
+                    budgetSection.appendChild(totalBudget);
+                }
+
+                // Tips Section
+                const tipsSection = document.createElement('div');
+                tipsSection.className = 'trip-tips';
+                tipsSection.innerHTML = '<h2>💡 Travel Tips</h2>';
+
+                if (tripData.tips && Array.isArray(tripData.tips)) {
+                    const tipsList = document.createElement('ul');
+                    tipsList.className = 'tips-list';
+
+                    tripData.tips.forEach(tip => {
+                        const tipItem = document.createElement('li');
+                        tipItem.innerHTML = `<span class="tip-icon">💡</span> ${tip}`;
+                        tipsList.appendChild(tipItem);
+                    });
+
+                    tipsSection.appendChild(tipsList);
+                }
+
+                // Assemble all sections
+                tripPlanContainer.appendChild(overviewSection);
+                tripPlanContainer.appendChild(itinerarySection);
+                tripPlanContainer.appendChild(budgetSection);
+                tripPlanContainer.appendChild(tipsSection);
+
+                // Clear the resultMessage pre element and append our beautiful container
+                resultMessage.innerHTML = ''; // Clear existing content
+                resultMessage.appendChild(tripPlanContainer);
+            }
+
+            // Helper function to format numbers with commas
+            function formatNumber(num) {
+                return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+        });
+    </script>
+</body>
+</html>
