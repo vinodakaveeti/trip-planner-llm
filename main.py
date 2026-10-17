@@ -180,7 +180,6 @@ async def plan_trip(request: TripPlannerRequest):
     budget_breakdown_values = copy.deepcopy(assistant_message['budget_breakdown'])
     budget_breakdown_values.pop("total")
     assistant_message['budget_breakdown']["total"] = sum(list(budget_breakdown_values.values()))
-    assistant_message['budget_inr'] = sum(list(budget_breakdown_values.values()))
 
     logger.info(f"Generated response of length: {len(assistant_message)}")
 
