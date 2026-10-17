@@ -32,17 +32,80 @@ MODEL_NAME = os.getenv("MODEL_NAME", "qwen3:4b")
 logger.info(f"Ollama URL: {OLLAMA_URL}")
 logger.info(f"Model name: {MODEL_NAME}")
 
-SYSTEM_PROMPT = """You are a concise travel planner. Generate a practical itinerary using the user's destination, duration, budget, and number of travellers.
+SYSTEM_PROMPT = """
+                You are a travel itinerary formatter.
+                
+                Using the conversation history and the calculate_total
+                tool result, return the complete travel itinerary as valid JSON
+                matching the provided schema.
+                
+                Rules:
+                1. Preserve the destination, duration, number of travellers,
+                   itinerary activities, and six budget category amounts
+                   established in the conversation.
+                2. Set budget_breakdown.total to the exact total returned
+                   by the calculate_total Python tool.
+                3. Do not recalculate or estimate the total yourself.
+                4. Do not change any of the six budget category amounts.
+                5. Include exactly one itinerary entry per travel day.
+                6. Include morning, afternoon, and evening activities
+                   for every day.
+                7. Include exactly 3 practical tips.
+                8. Return only valid JSON matching the provided schema.
+                9. Do not include explanations or Markdown.
+                """
 
-                    Rules:
-                    - Generate exactly one entry per travel day.
-                    - Include morning, afternoon, and evening activities for every day.
-                    - Keep each activity to one short sentence.
-                    - Include a compact budget breakdown and exactly 3 practical tips.
-                    - Keep the total within the requested budget where possible.
-                    - State reasonable assumptions for missing information.
-                    - Return only valid JSON matching the provided schema.
-                    - Do not include introductions, conclusions, or extra commentary."""
+TOOL_TEST_PROMPT = """
+                    You are a tool-calling assistant.
+                    Call calculate_total exactly once using the six
+                    budget amounts supplied by the user.
+                    Do not modify any amount.
+                    Do not explain or generate an itinerary.
+                    """
+
+FINAL_SYSTEM_PROMPT = """
+                        You are a JSON response formatter.
+                        
+                        Return the complete itinerary from the supplied plan.
+                        Preserve the destination, duration, travellers, itinerary
+                        activities, and all six budget category amounts.
+                        
+                        Set budget_breakdown.total to the exact total supplied
+                        by the application.
+                        
+                        Do not change the six budget category amounts.
+                        Include exactly 3 tips and one itinerary entry per day.
+                        Return only valid JSON matching the supplied schema.
+                        """
+
+tool = [
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_total",
+            "description": "The method calculates the total budget of the trip",
+            "parameters":{
+                "type": "object",
+                "properties": {
+                    "travel": {"type": "number"},
+                    "accommodation": {"type": "number"},
+                    "food": {"type": "number"},
+                    "local_transport": {"type": "number"},
+                    "activities": {"type": "number"},
+                    "miscellaneous": {"type": "number"}
+                },
+                "required": [
+                    "travel",
+                    "accommodation",
+                    "food",
+                    "local_transport",
+                    "activities",
+                    "miscellaneous"
+                ]
+            }
+        }
+    }
+]
 
 TRIP_SCHEMA = {
     "type": "object",
@@ -98,34 +161,7 @@ TRIP_SCHEMA = {
     ]
 }
 
-
-@app.post("/v1/plan-trip", response_model=TripPlannerResponse)
-async def plan_trip(request: TripPlannerRequest):
-    logger.info(f"Received trip planning request: {request.text}")
-
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT
-
-            },
-            {
-                "role": "user",
-                "content": request.text
-            }
-        ],
-        "format": TRIP_SCHEMA,
-        "stream": False,
-        "think": False,
-        "keep_alive": "30m",
-        "options": {
-            "num_predict": 2000,
-            "temperature": 0.1,
-        }
-    }
-
+async def call_llm(payload):
     try:
         logger.info(f"Sending request to Ollama at {OLLAMA_URL} and request payload is {payload}")
         async with httpx.AsyncClient(timeout=90) as client:
@@ -133,7 +169,7 @@ async def plan_trip(request: TripPlannerRequest):
             response.raise_for_status()
             result = response.json()
             logger.info(f"Received response from Ollama: {result}...")
-
+            return result
     except httpx.TimeoutException:
         logger.error("Ollama request timed out after 90 seconds")
         raise HTTPException(
@@ -165,8 +201,109 @@ async def plan_trip(request: TripPlannerRequest):
             detail=f"An unexpected error occurred: {str(e)}"
         )
 
+def calculate_total(travel, accommodation, food, local_transport, activities, miscellaneous):
+    return  travel + accommodation + food + local_transport + activities + miscellaneous
+
+@app.post("/v1/plan-trip", response_model=TripPlannerResponse)
+async def plan_trip(request: TripPlannerRequest):
+    logger.info(f"Received trip planning request: {request.text}")
+
+    payload = {
+        "model": MODEL_NAME,
+        "tools": tool,
+        "messages": [
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+
+            },
+            {
+                "role": "user",
+                "content": request.text
+            }
+        ],
+        "format": TRIP_SCHEMA,
+        "stream": False,
+        "think": False,
+        "keep_alive": "30m",
+        "options": {
+            "num_predict": 2000,
+            "temperature": 0.1,
+        }
+    }
+
+    result = await call_llm(payload)
+
+    plan = json.loads(result["message"]["content"])
+
+    categories = [
+        "travel",
+        "accommodation",
+        "food",
+        "local_transport",
+        "activities",
+        "miscellaneous"
+    ]
+
+    category_amounts = {
+        key: plan["budget_breakdown"][key]
+        for key in categories
+    }
+
+    tool_payload = {
+        "model": MODEL_NAME,
+        "tools": tool,
+        "messages": [
+            {
+                "role": "system",
+                "content": """
+            You are a tool-calling assistant.
+            Call calculate_total exactly once using the six
+            budget amounts supplied by the user.
+            Do not modify any amount.
+            Do not explain or generate an itinerary.
+            """
+            },
+            {
+                "role": "user",
+                "content": json.dumps({
+                    "category_amount": json.dumps(category_amounts),
+                    "plan": json.dumps(plan)
+                })
+            }
+        ],
+        "stream": False,
+        "think": False,
+        "options": {
+            "num_predict": 2000,
+            "temperature": 0
+        }
+    }
+
+    result = await call_llm(tool_payload)
+    result = result["message"]
+    # Execute tool methods
+    tool_methods = result.get("tool_calls", [])
+
+    for method in tool_methods:
+        function = method.get("function", "")
+        name = function.get("name", "")
+        args = function.get("arguments", {})
+        if name == "calculate_total":
+            total = calculate_total(*args)
+            message = {
+                "role": "user",
+                "content": json.dumps({
+                    "calculate_total": str(total),
+                    "plan": json.dumps(plan)
+                })
+            }
+            payload["format"] = TRIP_SCHEMA
+            payload["messages"][0]["content"]= FINAL_SYSTEM_PROMPT
+            payload["messages"].append(message)
+            result = await call_llm(payload)
+
     # Extract the assistant's message from Ollama response
-    # Ollama typically returns: {"model": "...", "created_at": "...", "message": {"role": "assistant", "content": "..."}}
     assistant_message = ""
     if isinstance(result, dict):
         # Try to extract the message content
